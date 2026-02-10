@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seattle Downtown Parking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height: 100vh; color: white; }
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; margin: 10px; }
+        .btn { background: linear-gradient(135deg, #0ea5e9, #6366f1); color: white; border: none; padding: 15px 30px; border-radius: 12px; font-size: 16px; font-weight: bold; width: 100%; margin-top: 10px; }
+        .input { width: 100%; padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; font-size: 18px; text-align: center; text-transform: uppercase; margin: 10px 0; }
+        .card { background: rgba(255,255,255,0.05); border: 2px solid transparent; border-radius: 12px; padding: 15px; margin: 5px; text-align: center; display: inline-block; width: 22%; }
+        .card.selected { border-color: #0ea5e9; background: rgba(14,165,233,0.2); }
+        .all-day { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); width: 100%; display: flex; justify-content: space-between; align-items: center; }
+        .all-day.selected { border-color: #f59e0b; background: rgba(245,158,11,0.2); }
+        .hidden { display: none !important; }
+        #qrcode img { margin: 0 auto; border-radius: 8px; background: white; padding: 10px; }
+        .ticket { background: linear-gradient(135deg, #1e293b, #0f172a); border-radius: 12px; padding: 20px; position: relative; margin: 20px 0; border-top: 4px solid #0ea5e9; }
+        .price-big { font-size: 36px; font-weight: bold; color: #0ea5e9; }
+        .admin-btn { position: fixed; top: 10px; right: 10px; background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 8px; font-size: 12px; z-index: 100; }
+        .back-btn { background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; display: inline-block; }
+        input[type=range] { width: 100%; margin: 20px 0; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        @media (max-width: 600px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } .card { width: auto; } }
+    </style>
+</head>
+<body>
+    <button class="admin-btn" onclick="toggleAdmin()">Admin</button>
+    
+    <!-- CUSTOMER VIEW -->
+    <div id="customerView">
+        <div style="text-align: center; padding: 30px 20px;">
+            <h1 style="font-size: 32px; margin-bottom: 10px;">🅿️ ParkSeattle</h1>
+            <p style="color: #94a3b8;">Downtown Parking</p>
+        </div>
+
+        <div class="glass" style="max-width: 500px; margin: 0 auto;">
+            <!-- License Plate -->
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; color: #94a3b8;">License Plate</label>
+                <input type="text" id="licensePlate" class="input" placeholder="ABC-1234" maxlength="8" oninput="this.value = this.value.toUpperCase()">
+            </div>
+
+            <!-- Duration -->
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <label style="color: #94a3b8;">Duration</label>
+                    <span id="durationDisplay" style="color: #0ea5e9; font-weight: bold;">1 Hour</span>
+                </div>
+                <input type="range" id="durationSlider" min="1" max="12" value="1" oninput="updateDuration(this.value)">
+                
+                <div class="grid-4" style="margin-top: 15px;">
+                    <div class="card selected" onclick="selectDuration(1)" data-hours="1">
+                        <div style="font-size: 24px;">🕐</div>
+                        <div style="font-weight: bold;">1h</div>
+                        <div style="font-size: 12px; color: #94a3b8;">$<span class="p-1">5</span></div>
+                    </div>
+                    <div class="card" onclick="selectDuration(2)" data-hours="2">
+                        <div style="font-size: 24px;">🕑</div>
+                        <div style="font-weight: bold;">2h</div>
+                        <div style="font-size: 12px; color: #94a3b8;">$<span class="p-2">9</span></div>
+                    </div>
+                    <div class="card" onclick="selectDuration(4)" data-hours="4">
+                        <div style="font-size: 24px;">🕓</div>
+                        <div style="font-weight: bold;">4h</div>
+                        <div style="font-size: 12px; color: #94a3b8;">$<span class="p-4">16</span></div>
+                    </div>
+                    <div class="card" onclick="selectDuration(8)" data-hours="8">
+                        <div style="font-size: 24px;">🕗</div>
+                        <div style="font-weight: bold;">8h</div>
+                        <div style="font-size: 12px; color: #94a3b8;">$<span class="p-8">28</span></div>
+                    </div>
+                </div>
+
+                <div class="card all-day" onclick="selectDuration(24)" id="allDayBtn" data-hours="24" style="margin-top: 10px;">
+                    <div style="text-align: left;">
+                        <div style="font-weight: bold; color: #f59e0b;">ALL DAY</div>
+                        <div style="font-size: 12px; color: #94a3b8;">Best value - 24 hours</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 24px; font-weight: bold; color: #f59e0b;">$<span id="allDayPrice">35</span></div>
+                        <div style="font-size: 11px; color: #64748b; text-decoration: line-through;">$<span id="allDayCompare">60</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Price -->
+            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: #94a3b8;">Rate</span>
+                    <span id="rateDisplay">$5/hour</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                    <span>Total</span>
+                    <span class="price-big" id="totalPrice">$5</span>
+                </div>
+            </div>
+
+            <button class="btn" onclick="pay()">Pay & Get Pass</button>
+        </div>
+
+        <!-- Success/Ticket View -->
+        <div id="ticketView" class="hidden glass" style="max-width: 500px; margin: 20px auto; text-align: center;">
+            <div style="color: #22c55e; font-size: 48px; margin-bottom: 10px;">✓</div>
+            <h2 style="color: #22c55e; margin-bottom: 5px;">Payment Successful!</h2>
+            <p style="color: #94a3b8; margin-bottom: 20px;">Your parking pass is ready</p>
+
+            <div class="ticket">
+                <div style="font-size: 12px; color: #94a3b8; margin-bottom: 5px;">PARKING PASS</div>
+                <div id="ticketPlate" style="font-size: 28px; font-weight: bold; letter-spacing: 2px; margin-bottom: 15px;">ABC-1234</div>
+                <div style="display: flex; justify-content: space-around; font-size: 14px; margin-bottom: 15px;">
+                    <div>
+                        <div style="color: #94a3b8; font-size: 11px;">Valid Until</div>
+                        <div id="ticketExpiry" style="color: #f59e0b; font-weight: bold;">2:30 PM</div>
+                    </div>
+                    <div>
+                        <div style="color: #94a3b8; font-size: 11px;">Duration</div>
+                        <div id="ticketDuration">1 Hour</div>
+                    </div>
+                </div>
+                <div style="font-size: 11px; color: #64748b; font-family: monospace;">ID: <span id="passId">PS-78432</span></div>
+            </div>
+
+            <div id="qrcode" style="margin: 20px 0;"></div>
+            <p style="font-size: 12px; color: #64748b;">Show this to parking enforcement</p>
+
+            <button class="btn" onclick="reset()" style="margin-top: 20px; background: rgba(255,255,255,0.1);">New Session</button>
+        </div>
+    </div>
+
+    <!-- ADMIN VIEW -->
+    <div id="adminView" class="hidden" style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div class="back-btn" onclick="toggleAdmin()">← Back to Customer</div>
+        <h2 style="font-size: 24px; margin-bottom: 20px;">Admin Panel</h2>
+
+        <div class="glass" style="margin-bottom: 20px;">
+            <h3 style="margin-bottom: 15px; color: #94a3b8;">Pricing Settings</h3>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-size: 14px;">Hourly Rate ($)</label>
+                <input type="number" id="adminHourly" value="5" min="1" max="50" onchange="updatePricing()" style="width: 100px; padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white;">
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-size: 14px;">All-Day Pass ($)</label>
+                <input type="number" id="adminAllDay" value="35" min="10" max="100" onchange="updatePricing()" style="width: 100px; padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white;">
+            </div>
+        </div>
+
+        <div class="glass">
+            <h3 style="margin-bottom: 15px; color: #94a3b8;">Generate Location QR</h3>
+            <input type="text" id="qrText" value="Downtown Seattle - Lot A" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white;">
+            <button class="btn" onclick="generateQR()" style="margin-top: 10px;">Generate QR Code</button>
+            <div id="adminQR" style="margin-top: 20px; text-align: center;"></div>
+        </div>
+    </div>
+
+    <script>
+        let state = { hourlyRate: 5, allDayRate: 35, hours: 1, isAllDay: false, plate: '' };
+
+        function selectDuration(h) {
+            state.hours = h;
+            state.isAllDay = h === 24;
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+            document.querySelector(`[data-hours="${h}"]`).classList.add('selected');
+            if (!state.isAllDay) document.getElementById('durationSlider').value = h;
+            updateDisplay();
+        }
+
+        function updateDuration(v) {
+            state.hours = parseInt(v);
+            state.isAllDay = false;
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+            document.querySelector(`[data-hours="${v}"]`)?.classList.add('selected');
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            document.getElementById('durationDisplay').textContent = state.isAllDay ? 'All Day' : state.hours + ' Hour' + (state.hours > 1 ? 's' : '');
+            let total = state.isAllDay ? state.allDayRate : Math.round(state.hourlyRate * state.hours * (state.hours >= 4 ? 0.9 : state.hours >= 2 ? 0.95 : 1));
+            document.getElementById('totalPrice').textContent = '$' + total;
+            document.getElementById('rateDisplay').textContent = state.isAllDay ? 'Flat Rate' : '$' + state.hourlyRate + '/hour';
+        }
+
+        function updatePricing() {
+            state.hourlyRate = parseFloat(document.getElementById('adminHourly').value) || 5;
+            state.allDayRate = parseFloat(document.getElementById('adminAllDay').value) || 35;
+            document.querySelector('.p-1').textContent = state.hourlyRate;
+            document.querySelector('.p-2').textContent = Math.round(state.hourlyRate * 2 * 0.95);
+            document.querySelector('.p-4').textContent = Math.round(state.hourlyRate * 4 * 0.9);
+            document.querySelector('.p-8').textContent = Math.round(state.hourlyRate * 8 * 0.85);
+            document.getElementById('allDayPrice').textContent = state.allDayRate;
+            document.getElementById('allDayCompare').textContent = state.hourlyRate * 12;
+            updateDisplay();
+        }
+
+        function pay() {
+            let plate = document.getElementById('licensePlate').value.trim();
+            if (!plate) { alert('Enter license plate'); return; }
+            state.plate = plate;
+            
+            document.querySelector('.btn').textContent = 'Processing...';
+            setTimeout(() => {
+                let expiry = new Date(Date.now() + (state.isAllDay ? 24 : state.hours) * 60 * 60 * 1000);
+                document.getElementById('ticketPlate').textContent = plate;
+                document.getElementById('ticketExpiry').textContent = expiry.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                document.getElementById('ticketDuration').textContent = state.isAllDay ? 'All Day (24h)' : state.hours + ' Hours';
+                document.getElementById('passId').textContent = 'PS-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+                
+                document.getElementById('qrcode').innerHTML = '';
+                new QRCode(document.getElementById('qrcode'), { text: JSON.stringify({plate: plate, expiry: expiry.toISOString()}), width: 200, height: 200, colorDark: '#0f172a', colorLight: '#ffffff' });
+                
+                document.getElementById('customerView').querySelector('.glass').classList.add('hidden');
+                document.getElementById('ticketView').classList.remove('hidden');
+                document.querySelector('.btn').textContent = 'Pay & Get Pass';
+            }, 1000);
+        }
+
+        function reset() {
+            document.getElementById('licensePlate').value = '';
+            document.getElementById('customerView').querySelector('.glass').classList.remove('hidden');
+            document.getElementById('ticketView').classList.add('hidden');
+            selectDuration(1);
+        }
+
+        function toggleAdmin() {
+            if (document.getElementById('adminView').classList.contains('hidden')) {
+                let pwd = prompt('Admin password:');
+                if (pwd === 'admin123') {
+                    document.getElementById('customerView').classList.add('hidden');
+                    document.getElementById('adminView').classList.remove('hidden');
+                } else if (pwd) alert('Wrong password');
+            } else {
+                document.getElementById('adminView').classList.add('hidden');
+                document.getElementById('customerView').classList.remove('hidden');
+            }
+        }
+
+        function generateQR() {
+            document.getElementById('adminQR').innerHTML = '';
+            new QRCode(document.getElementById('adminQR'), { text: document.getElementById('qrText').value, width: 200, height: 200 });
+        }
+
+        updateDisplay();
+    </script>
+</body>
+</html>
